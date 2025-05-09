@@ -41,16 +41,32 @@ export class UserManager {
     });
   }
 
-  removeUser(roomId: string, userId: string){
+  private getUserByConnection(conn: connection): { roomId: string, userId: string } | null {
+    for (const [roomId, room] of this.rooms) {
+      const user = room.users.find(user => user.conn === conn);
+      if (user) {
+        return { roomId, userId: user.id };
+      }
+    }
+    return null;
+  }
+
+  removeUser(roomId: string, userId: string) {
     console.log("removed user");
     const room = this.rooms.get(roomId);
     if(room) {
       room.users = room.users.filter(({id}) => id !== userId);
       console.log(`User with id ${userId} removed!`);
     } else {
-      console.error(`Error occured while removing user with id ${userId}`)
+      console.error(`Error occurred while removing user with id ${userId}`)
     }
-    
+  }
+
+  removeUserByConnection(conn: connection) {
+    const userInfo = this.getUserByConnection(conn);
+    if (userInfo) {
+      this.removeUser(userInfo.roomId, userInfo.userId);
+    }
   }
 
   getUser(roomId: string, userId: string): User | null {

@@ -39,26 +39,34 @@ wsServer.on('request', function(request) {
       return;
     }
     
-    var connection = request.accept(null, request.origin);
+    var connection = request.accept('echo-protocol', request.origin);
     console.log((new Date()) + ' Connection accepted.');
 
-    connection.on('message', function(message) {
+    // Handle connection close
+    connection.on('close', function(reasonCode, description) {
+        console.log((new Date()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
+        // Remove user from the room when they disconnect
+        userManager.removeUserByConnection(connection);
+    });
 
+    // Handle errors
+    connection.on('error', function(error) {
+        console.error('Connection error:', error);
+        connection.close();
+    });
+
+    connection.on('message', function(message) {
         if (message.type === 'utf8') {
             try {
                 messageHandler(connection, JSON.parse(message.utf8Data))
             } catch(e) {
-
+                console.error('Error processing message:', e);
+                connection.send(JSON.stringify({
+                    type: 'error',
+                    payload: 'Invalid message format'
+                }));
             }
-        }
-        else if (message.type === 'binary') {
-            console.log('Received Binary Message of ' + message.binaryData.length + ' bytes');
-            connection.sendBytes(message.binaryData);
-        }
-    });
-    connection.on('close', function(reasonCode, description) {
-        console.log((new Date()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
-        // userManager.removeUser(roomId, userId);
+        }      
     });
 });
 
@@ -101,6 +109,7 @@ function messageHandler(ws: connection, message: IncomingMessage){
         if(!chat) {
             return;
         }
+        console.log("inside upvote 2")
 
         const outgoingPayload: OutgoingMessage= {
             type: OutgoingSupportMessages.UpdateChat,
